@@ -52,6 +52,25 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         )
     }
 
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        ensureTarget()
+        if (mTarget == null) {
+            ensureTarget()
+        }
+        if (mTarget == null) {
+            return
+        }
+        mTarget?.measure(
+            View.MeasureSpec.makeMeasureSpec(
+                measuredWidth - paddingLeft - paddingRight,
+                View.MeasureSpec.EXACTLY
+            ), View.MeasureSpec.makeMeasureSpec(
+                measuredHeight - paddingTop - paddingBottom, View.MeasureSpec.EXACTLY
+            )
+        )
+    }
+
     private fun ensureTarget() {
         if (mTarget == null) {
             for (i in 0 until childCount) {

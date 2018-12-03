@@ -12,6 +12,9 @@ import androidx.annotation.Nullable
 class DrawstringRefreshLayout @JvmOverloads constructor(
     @NonNull context: Context, @Nullable attrs: AttributeSet? = null
 ) : ViewGroup(context, attrs) {
+    init {
+
+    }
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
 
     }

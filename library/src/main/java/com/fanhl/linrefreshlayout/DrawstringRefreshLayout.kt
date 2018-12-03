@@ -9,6 +9,8 @@ import androidx.annotation.Nullable
 
 /**
  * 拉绳（下拉拉绳）RefreshLayout
+ *
+ * see [androidx.swiperefreshlayout.widget.SwipeRefreshLayout]
  */
 class DrawstringRefreshLayout @JvmOverloads constructor(
     @NonNull context: Context, @Nullable attrs: AttributeSet? = null

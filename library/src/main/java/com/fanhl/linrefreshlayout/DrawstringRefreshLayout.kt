@@ -47,9 +47,9 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         child?.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
 
         drawstringView.layout(
-            100,
-            100,
-            200,
+            0,
+            0,
+            width,
             200
         )
     }
@@ -71,6 +71,10 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
                 measuredHeight - paddingTop - paddingBottom, View.MeasureSpec.EXACTLY
             )
         )
+//        drawstringView.measure(
+//            View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY),
+//            View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY)
+//        )
     }
 
     private fun ensureTarget() {

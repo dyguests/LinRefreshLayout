@@ -37,6 +37,13 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
             return
         }
 
+        val child = mTarget
+        val childLeft = paddingLeft
+        val childTop = paddingTop
+        val childWidth = width - paddingLeft - paddingRight
+        val childHeight = height - paddingTop - paddingBottom
+        child?.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
+
         drawstringView.layout(
             100,
             100,

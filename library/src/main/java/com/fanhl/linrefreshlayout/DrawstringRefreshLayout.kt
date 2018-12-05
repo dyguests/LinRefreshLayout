@@ -5,9 +5,11 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ListView
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
 import androidx.core.view.NestedScrollingParent
+import androidx.core.widget.ListViewCompat
 
 /**
  * 拉绳（下拉拉绳）RefreshLayout
@@ -19,11 +21,20 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 ) : ViewGroup(context, attrs), NestedScrollingParent {
     /** the target of the gesture */
     private var mTarget: View? = null
+    internal var mRefreshing = false
+
+    private var mNestedScrollInProgress: Boolean = false
+
+    // Target is returning to its start offset because it was cancelled or a
+    // refresh was triggered.
+    private var mReturningToStart: Boolean = false
 
     /** 下拉view */
     private val drawstringView by lazy { DrawstringView(context) }
     /** 下拉view的绘制顺序（之后统一改名） */
     private var mCircleViewIndex = -1
+
+    private var mChildScrollUpCallback: OnChildScrollUpCallback? = null
 
     init {
         isChildrenDrawingOrderEnabled = true
@@ -107,8 +118,20 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         ensureTarget()
+
+        val action = ev.actionMasked
+        val pointerIndex: Int
+
+        if (mReturningToStart && action == MotionEvent.ACTION_DOWN) {
+            mReturningToStart = false
+        }
+
+        if (!isEnabled || mReturningToStart || canChildScrollUp() || mRefreshing || mNestedScrollInProgress) {
+            // Fail fast if we're not in a state where a swipe is possible
+            return false
+        }
 
         return super.onInterceptTouchEvent(ev)
     }
@@ -123,5 +146,48 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+
+    /**
+     * @return Whether it is possible for the child view of this layout to
+     * scroll up. Override this if the child view is a custom view.
+     */
+    fun canChildScrollUp(): Boolean {
+        if (mChildScrollUpCallback != null) {
+            return mChildScrollUpCallback!!.canChildScrollUp(this, mTarget)
+        }
+        return if (mTarget is ListView) {
+            ListViewCompat.canScrollList(mTarget as ListView, -1)
+        } else mTarget!!.canScrollVertically(-1)
+    }
+
+
+    /**
+     * Classes that wish to be notified when the swipe gesture correctly
+     * triggers a refresh should implement this interface.
+     */
+    interface OnRefreshListener {
+        /**
+         * Called when a swipe gesture triggers a refresh.
+         */
+        fun onRefresh()
+    }
+
+    /**
+     * Classes that wish to override [SwipeRefreshLayout.canChildScrollUp] method
+     * behavior should implement this interface.
+     */
+    interface OnChildScrollUpCallback {
+        /**
+         * Callback that will be called when [SwipeRefreshLayout.canChildScrollUp] method
+         * is called to allow the implementer to override its behavior.
+         *
+         * @param parent SwipeRefreshLayout that this callback is overriding.
+         * @param child The child view of SwipeRefreshLayout.
+         *
+         * @return Whether it is possible for the child view of parent layout to scroll up.
+         */
+        fun canChildScrollUp(parent: DrawstringRefreshLayout, child: View?): Boolean
     }
 }

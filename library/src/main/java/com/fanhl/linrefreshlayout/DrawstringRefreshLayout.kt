@@ -204,7 +204,73 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
             return false
         }
 
+        when (action) {
+            MotionEvent.ACTION_DOWN -> {
+                mActivePointerId = ev.getPointerId(0)
+                mIsBeingDragged = false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                pointerIndex = ev.findPointerIndex(mActivePointerId)
+                if (pointerIndex < 0) {
+                    Log.e(LOG_TAG, "Got ACTION_MOVE event but have an invalid active pointer id.")
+                    return false
+                }
+
+                val y = ev.getY(pointerIndex)
+                startDragging(y)
+
+                if (mIsBeingDragged) {
+                    val overscrollTop = (y - mInitialMotionY) * DRAG_RATE
+                    if (overscrollTop > 0) {
+                        moveSpinner(overscrollTop)
+                    } else {
+                        return false
+                    }
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                pointerIndex = ev.actionIndex
+                if (pointerIndex < 0) {
+                    Log.e(
+                        LOG_TAG,
+                        "Got ACTION_POINTER_DOWN event but have an invalid action index."
+                    )
+                    return false
+                }
+                mActivePointerId = ev.getPointerId(pointerIndex)
+            }
+
+            MotionEvent.ACTION_POINTER_UP -> onSecondaryPointerUp(ev)
+
+            MotionEvent.ACTION_UP -> {
+                pointerIndex = ev.findPointerIndex(mActivePointerId)
+                if (pointerIndex < 0) {
+                    Log.e(LOG_TAG, "Got ACTION_UP event but don't have an active pointer id.")
+                    return false
+                }
+
+                if (mIsBeingDragged) {
+                    val y = ev.getY(pointerIndex)
+                    val overscrollTop = (y - mInitialMotionY) * DRAG_RATE
+                    mIsBeingDragged = false
+                    finishSpinner(overscrollTop)
+                }
+                mActivePointerId = INVALID_POINTER
+                return false
+            }
+            MotionEvent.ACTION_CANCEL -> return false
+        }
+
         return true
+    }
+
+    private fun moveSpinner(overscrollTop: Float) {
+        // FIXME: 2018/12/5 fanhl
+    }
+
+    private fun finishSpinner(overscrollTop: Float) {
+        // FIXME: 2018/12/5 fanhl
     }
 
     private fun ensureTarget() {
@@ -264,8 +330,6 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     }
 
     companion object {
-        private const val INVALID_POINTER = -1
-
         private val LOG_TAG = DrawstringRefreshLayout::class.java.simpleName
 
         /**
@@ -275,6 +339,9 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
          */
         private val MAX_ALPHA = 255
         private val STARTING_PROGRESS_ALPHA = (.3f * MAX_ALPHA).toInt()
+
+        private const val INVALID_POINTER = -1
+        private const val DRAG_RATE = .5f
     }
 
     /**

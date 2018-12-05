@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.Transformation
 import android.widget.ListView
 import androidx.annotation.NonNull
@@ -45,6 +46,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     // Target is returning to its start offset because it was cancelled or a
     // refresh was triggered.
     private var mReturningToStart: Boolean = false
+    private val mDecelerateInterpolator: DecelerateInterpolator? = null
 
     /** 下拉view */
     private val mCircleView by lazy { DrawstringView(context) }
@@ -52,6 +54,8 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     private var mCircleViewIndex = -1
 
     protected var mFrom: Int = 0
+
+    internal var mStartingScale: Float = 0.toFloat()
 
     protected var mOriginalOffsetTop: Int = 0
 
@@ -63,7 +67,14 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
     }
 
+    private var mScaleDownAnimation: Animation? = null
+
+    private var mScaleDownToStartAnimation: Animation? = null
+
     internal var mNotify: Boolean = false
+
+    // Whether the client has set a custom starting position;
+    internal var mUsingCustomStart: Boolean = false
 
     private var mChildScrollUpCallback: OnChildScrollUpCallback? = null
 
@@ -86,6 +97,30 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
             } else {
                 reset()
             }
+        }
+    }
+
+    // ------------------------------- 原底部参数 -------------------------------------
+
+    private val mAnimateToCorrectPosition = object : Animation() {
+        public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+            var targetTop = 0
+            var endTarget = 0
+            if (!mUsingCustomStart) {
+                endTarget = mSpinnerOffsetEnd - Math.abs(mOriginalOffsetTop)
+            } else {
+                endTarget = mSpinnerOffsetEnd
+            }
+            targetTop = mFrom + ((endTarget - mFrom) * interpolatedTime).toInt()
+            val offset = targetTop - mCircleView.top
+            setTargetOffsetTopAndBottom(offset)
+            mProgress.arrowScale = 1 - interpolatedTime
+        }
+    }
+
+    private val mAnimateToStartPosition = object : Animation() {
+        public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+            moveToStart(interpolatedTime)
         }
     }
 
@@ -321,6 +356,24 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         mCurrentTargetOffsetTop = mCircleView.top
     }
 
+
+    private fun setColorViewAlpha(targetAlpha: Int) {
+        // FIXME: 2018/12/5 fanhl 这个应该不需要
+//        mCircleView.background.alpha = targetAlpha
+
+        mProgress.alpha = targetAlpha
+    }
+
+    /**
+     * Pre API 11, this does an alpha animation.
+     * @param progress
+     */
+    internal fun setAnimationProgress(progress: Float) {
+        // FIXME: 2018/12/5 fanhl 这个应该不需要
+//        mCircleView.scaleX = progress
+//        mCircleView.scaleY = progress
+    }
+
     private fun setRefreshing(refreshing: Boolean, notify: Boolean) {
         if (mRefreshing != refreshing) {
             mNotify = notify
@@ -381,13 +434,20 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
     }
 
+    internal fun moveToStart(interpolatedTime: Float) {
+        var targetTop = 0
+        targetTop = mFrom + ((mOriginalOffsetTop - mFrom) * interpolatedTime).toInt()
+        val offset = targetTop - mCircleView.top
+        setTargetOffsetTopAndBottom(offset)
+    }
+
     internal fun startScaleDownAnimation(listener: Animation.AnimationListener?) {
         mScaleDownAnimation = object : Animation() {
             public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
                 setAnimationProgress(1 - interpolatedTime)
             }
         }
-        mScaleDownAnimation.setDuration(SCALE_DOWN_DURATION.toLong())
+        mScaleDownAnimation!!.setDuration(SCALE_DOWN_DURATION.toLong())
         mCircleView.setAnimationListener(listener)
         mCircleView.clearAnimation()
         mCircleView.startAnimation(mScaleDownAnimation)
@@ -422,6 +482,26 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
     }
 
+    private fun startScaleDownReturnToStartAnimation(
+        from: Int,
+        listener: Animation.AnimationListener?
+    ) {
+        mFrom = from
+        mStartingScale = mCircleView.scaleX
+        mScaleDownToStartAnimation = object : Animation() {
+            public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+                val targetScale = mStartingScale + -mStartingScale * interpolatedTime
+                setAnimationProgress(targetScale)
+                moveToStart(interpolatedTime)
+            }
+        }
+        mScaleDownToStartAnimation!!.setDuration(SCALE_DOWN_DURATION.toLong())
+        if (listener != null) {
+            mCircleView.setAnimationListener(listener)
+        }
+        mCircleView.clearAnimation()
+        mCircleView.startAnimation(mScaleDownToStartAnimation)
+    }
 
     /**
      * @return Whether it is possible for the child view of this layout to
@@ -480,6 +560,18 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
         private const val INVALID_POINTER = -1
         private const val DRAG_RATE = .5f
+
+        // Max amount of circle that can be filled by progress during swipe gesture,
+        // where 1.0 is a full circle
+        private val MAX_PROGRESS_ANGLE = .8f
+
+        private val SCALE_DOWN_DURATION = 150
+
+        private val ALPHA_ANIMATION_DURATION = 300
+
+        private val ANIMATE_TO_TRIGGER_DURATION = 200
+
+        private val ANIMATE_TO_START_DURATION = 200
 
         // Default offset in dips from the top of the view to where the progress spinner should stop
         private const val DEFAULT_CIRCLE_TARGET = 64

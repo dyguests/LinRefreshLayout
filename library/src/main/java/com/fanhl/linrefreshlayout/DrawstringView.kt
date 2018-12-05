@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.Animation
 import androidx.annotation.Nullable
 
 /**
@@ -19,6 +20,9 @@ class DrawstringView(
             color = Color.BLACK
         }
     }
+
+    private var mListener: Animation.AnimationListener? = null
+
     private var scrollOffset = 0f
 
     override fun onDraw(canvas: Canvas) {
@@ -33,5 +37,9 @@ class DrawstringView(
     fun setPullDownOffset(scrollOffset: Float) {
         this.scrollOffset = scrollOffset
         postInvalidate()
+    }
+
+    fun setAnimationListener(listener: Animation.AnimationListener?) {
+        mListener = listener
     }
 }

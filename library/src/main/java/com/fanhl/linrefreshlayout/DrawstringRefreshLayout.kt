@@ -268,6 +268,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     private fun moveSpinner(overscrollTop: Float) {
         // FIXME: 2018/12/5 fanhl
         Log.d(TAG, "moveSpinner: overscrollTop:$overscrollTop")
+        mCircleView.setPullDownOffset(overscrollTop)
     }
 
     private fun finishSpinner(overscrollTop: Float) {

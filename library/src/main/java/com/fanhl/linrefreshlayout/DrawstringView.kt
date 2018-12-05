@@ -18,4 +18,11 @@ class DrawstringView(
         super.onDraw(canvas)
         canvas.drawColor(Color.RED)
     }
+
+    /**
+     * 这里设置下拉的偏移值
+     */
+    fun setPullDownOffset(offset: Float) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }

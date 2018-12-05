@@ -191,6 +191,22 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         return mIsBeingDragged
     }
 
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+        val action = ev.getActionMasked()
+        var pointerIndex = -1
+
+        if (mReturningToStart && action == MotionEvent.ACTION_DOWN) {
+            mReturningToStart = false
+        }
+
+        if (!isEnabled || mReturningToStart || canChildScrollUp() || mRefreshing || mNestedScrollInProgress) {
+            // Fail fast if we're not in a state where a swipe is possible
+            return false
+        }
+
+        return true
+    }
+
     private fun ensureTarget() {
         if (mTarget == null) {
             for (i in 0 until childCount) {

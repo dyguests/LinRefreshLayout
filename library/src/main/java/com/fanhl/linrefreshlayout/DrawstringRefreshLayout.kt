@@ -97,12 +97,13 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         val childWidth = width - paddingLeft - paddingRight
         val childHeight = height - paddingTop - paddingBottom
         child?.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
-
+        val circleWidth = mCircleView.measuredWidth
+        val circleHeight = mCircleView.measuredHeight
         mCircleView.layout(
             0,
-            0,
+            mCurrentTargetOffsetTop,
             width,
-            200
+            mCurrentTargetOffsetTop + 200
         )
     }
 

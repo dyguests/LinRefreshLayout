@@ -2,10 +2,12 @@ package com.fanhl.linrefreshlayout
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
+import androidx.core.view.NestedScrollingParent
 
 /**
  * 拉绳（下拉拉绳）RefreshLayout
@@ -14,7 +16,7 @@ import androidx.annotation.Nullable
  */
 class DrawstringRefreshLayout @JvmOverloads constructor(
     @NonNull context: Context, @Nullable attrs: AttributeSet? = null
-) : ViewGroup(context, attrs) {
+) : ViewGroup(context, attrs), NestedScrollingParent {
     /** the target of the gesture */
     private var mTarget: View? = null
 
@@ -103,6 +105,12 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
                 break
             }
         }
+    }
+
+    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+        ensureTarget()
+
+        return super.onInterceptTouchEvent(ev)
     }
 
     private fun ensureTarget() {

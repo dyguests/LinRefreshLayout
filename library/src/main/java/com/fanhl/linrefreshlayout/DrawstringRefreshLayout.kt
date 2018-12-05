@@ -46,7 +46,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     // Target is returning to its start offset because it was cancelled or a
     // refresh was triggered.
     private var mReturningToStart: Boolean = false
-    private val mDecelerateInterpolator: DecelerateInterpolator? = null
+    private var mDecelerateInterpolator: DecelerateInterpolator? = null
 
     /** 下拉view */
     private val mCircleView by lazy { DrawstringView(context) }
@@ -126,6 +126,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
     init {
         setWillNotDraw(false)
+        mDecelerateInterpolator = DecelerateInterpolator(DECELERATE_INTERPOLATION_FACTOR)
 
         val metrics = resources.displayMetrics
 
@@ -558,6 +559,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         private const val MAX_ALPHA = 255
         private const val STARTING_PROGRESS_ALPHA = (.3f * MAX_ALPHA).toInt()
 
+        private val DECELERATE_INTERPOLATION_FACTOR = 2f
         private const val INVALID_POINTER = -1
         private const val DRAG_RATE = .5f
 

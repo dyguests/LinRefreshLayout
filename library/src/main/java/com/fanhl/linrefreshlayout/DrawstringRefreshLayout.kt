@@ -20,10 +20,30 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
     /** 下拉view */
     private val drawstringView by lazy { DrawstringView(context) }
+    /** 下拉view的绘制顺序（之后统一改名） */
+    private var mCircleViewIndex = -1
 
     init {
+        isChildrenDrawingOrderEnabled = true
+
         ensureTarget()
+
         addView(drawstringView)
+    }
+
+    override fun getChildDrawingOrder(childCount: Int, i: Int): Int {
+        return if (mCircleViewIndex < 0) {
+            i
+        } else if (i == childCount - 1) {
+            // Draw the selected child last
+            mCircleViewIndex
+        } else if (i >= mCircleViewIndex) {
+            // Move the children after the selected child earlier one
+            i + 1
+        } else {
+            // Keep the children before the selected child the same
+            i
+        }
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
@@ -75,6 +95,14 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 //            View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY),
 //            View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY)
 //        )
+        mCircleViewIndex = -1
+        // Get the index of the circleview.
+        for (index in 0 until childCount) {
+            if (getChildAt(index) === drawstringView) {
+                mCircleViewIndex = index
+                break
+            }
+        }
     }
 
     private fun ensureTarget() {

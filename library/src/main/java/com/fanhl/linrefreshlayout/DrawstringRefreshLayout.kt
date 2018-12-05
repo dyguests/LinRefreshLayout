@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.Transformation
 import android.widget.ListView
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
@@ -24,8 +26,10 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 ) : ViewGroup(context, attrs), NestedScrollingParent {
     /** the target of the gesture */
     private var mTarget: View? = null
+    internal var mListener: OnRefreshListener? = null
     internal var mRefreshing = false
     private val mTouchSlop: Int = 0
+    private var mTotalDragDistance = -1f
 
     private var mNestedScrollInProgress: Boolean = false
 
@@ -35,6 +39,8 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     private var mInitialDownY: Float = 0.toFloat()
     private var mIsBeingDragged: Boolean = false
     private var mActivePointerId = INVALID_POINTER
+    // Whether this item is scaled up rather than clipped
+    internal var mScale: Boolean = false
 
     // Target is returning to its start offset because it was cancelled or a
     // refresh was triggered.
@@ -45,7 +51,11 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     /** 下拉view的绘制顺序（之后统一改名） */
     private var mCircleViewIndex = -1
 
+    protected var mFrom: Int = 0
+
     protected var mOriginalOffsetTop: Int = 0
+
+    internal var mSpinnerOffsetEnd: Int = 0
 
     internal val mProgress: CircularProgressDrawable by lazy {
         CircularProgressDrawable(getContext()).apply {
@@ -53,14 +63,46 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
     }
 
+    internal var mNotify: Boolean = false
+
     private var mChildScrollUpCallback: OnChildScrollUpCallback? = null
 
+    private val mRefreshListener = object : Animation.AnimationListener {
+        override fun onAnimationStart(animation: Animation) {}
+
+        override fun onAnimationRepeat(animation: Animation) {}
+
+        override fun onAnimationEnd(animation: Animation) {
+            if (mRefreshing) {
+                // Make sure the progress view is fully visible
+                mProgress.alpha = MAX_ALPHA
+                mProgress.start()
+                if (mNotify) {
+                    if (mListener != null) {
+                        mListener!!.onRefresh()
+                    }
+                }
+                mCurrentTargetOffsetTop = mCircleView.top
+            } else {
+                reset()
+            }
+        }
+    }
+
     init {
+        setWillNotDraw(false)
+
+        val metrics = resources.displayMetrics
+
         isChildrenDrawingOrderEnabled = true
 
         ensureTarget()
 
         addView(mCircleView)
+
+        // the absolute offset has to take into account that the circle starts at an offset
+        mSpinnerOffsetEnd = (DEFAULT_CIRCLE_TARGET * metrics.density).toInt()
+        mTotalDragDistance = mSpinnerOffsetEnd.toFloat()
     }
 
     override fun getChildDrawingOrder(childCount: Int, i: Int): Int {
@@ -265,6 +307,34 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         return true
     }
 
+    internal fun reset() {
+        mCircleView.clearAnimation()
+        mProgress.stop()
+        mCircleView.visibility = View.GONE
+        setColorViewAlpha(MAX_ALPHA)
+        // Return the circle to its start position
+        if (mScale) {
+            setAnimationProgress(0f /* animation complete and view is hidden */)
+        } else {
+            setTargetOffsetTopAndBottom(mOriginalOffsetTop - mCurrentTargetOffsetTop)
+        }
+        mCurrentTargetOffsetTop = mCircleView.top
+    }
+
+    private fun setRefreshing(refreshing: Boolean, notify: Boolean) {
+        if (mRefreshing != refreshing) {
+            mNotify = notify
+            ensureTarget()
+            mRefreshing = refreshing
+            if (mRefreshing) {
+                animateOffsetToCorrectPosition(mCurrentTargetOffsetTop, mRefreshListener)
+            } else {
+                startScaleDownAnimation(mRefreshListener)
+            }
+        }
+    }
+
+
     private fun moveSpinner(overscrollTop: Float) {
         // FIXME: 2018/12/5 fanhl
         Log.d(TAG, "moveSpinner: overscrollTop:$overscrollTop")
@@ -272,8 +342,31 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     }
 
     private fun finishSpinner(overscrollTop: Float) {
-        // FIXME: 2018/12/5 fanhl
-        Log.d(TAG, "finishSpinner: overscrollTop:$overscrollTop")
+        if (overscrollTop > mTotalDragDistance) {
+            setRefreshing(true, true /* notify */)
+        } else {
+            // cancel refresh
+            mRefreshing = false
+            mProgress.setStartEndTrim(0f, 0f)
+            var listener: Animation.AnimationListener? = null
+            if (!mScale) {
+                listener = object : Animation.AnimationListener {
+
+                    override fun onAnimationStart(animation: Animation) {}
+
+                    override fun onAnimationEnd(animation: Animation) {
+                        if (!mScale) {
+                            startScaleDownAnimation(null)
+                        }
+                    }
+
+                    override fun onAnimationRepeat(animation: Animation) {}
+
+                }
+            }
+            animateOffsetToStartPosition(mCurrentTargetOffsetTop, listener)
+            mProgress.arrowEnabled = false
+        }
     }
 
     private fun ensureTarget() {
@@ -285,6 +378,47 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
                     break
                 }
             }
+        }
+    }
+
+    internal fun startScaleDownAnimation(listener: Animation.AnimationListener?) {
+        mScaleDownAnimation = object : Animation() {
+            public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+                setAnimationProgress(1 - interpolatedTime)
+            }
+        }
+        mScaleDownAnimation.setDuration(SCALE_DOWN_DURATION.toLong())
+        mCircleView.setAnimationListener(listener)
+        mCircleView.clearAnimation()
+        mCircleView.startAnimation(mScaleDownAnimation)
+    }
+
+    private fun animateOffsetToCorrectPosition(from: Int, listener: Animation.AnimationListener?) {
+        mFrom = from
+        mAnimateToCorrectPosition.reset()
+        mAnimateToCorrectPosition.setDuration(ANIMATE_TO_TRIGGER_DURATION.toLong())
+        mAnimateToCorrectPosition.setInterpolator(mDecelerateInterpolator)
+        if (listener != null) {
+            mCircleView.setAnimationListener(listener)
+        }
+        mCircleView.clearAnimation()
+        mCircleView.startAnimation(mAnimateToCorrectPosition)
+    }
+
+    private fun animateOffsetToStartPosition(from: Int, listener: Animation.AnimationListener?) {
+        if (mScale) {
+            // Scale the item back down
+            startScaleDownReturnToStartAnimation(from, listener)
+        } else {
+            mFrom = from
+            mAnimateToStartPosition.reset()
+            mAnimateToStartPosition.setDuration(ANIMATE_TO_START_DURATION.toLong())
+            mAnimateToStartPosition.setInterpolator(mDecelerateInterpolator)
+            if (listener != null) {
+                mCircleView.setAnimationListener(listener)
+            }
+            mCircleView.clearAnimation()
+            mCircleView.startAnimation(mAnimateToStartPosition)
         }
     }
 
@@ -341,11 +475,14 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
          *
          * FIXME: 2018/12/5 fanhl 之后换成 拉绳自带的逻辑
          */
-        private val MAX_ALPHA = 255
-        private val STARTING_PROGRESS_ALPHA = (.3f * MAX_ALPHA).toInt()
+        private const val MAX_ALPHA = 255
+        private const val STARTING_PROGRESS_ALPHA = (.3f * MAX_ALPHA).toInt()
 
         private const val INVALID_POINTER = -1
         private const val DRAG_RATE = .5f
+
+        // Default offset in dips from the top of the view to where the progress spinner should stop
+        private const val DEFAULT_CIRCLE_TARGET = 64
     }
 
     /**

@@ -267,10 +267,12 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
     private fun moveSpinner(overscrollTop: Float) {
         // FIXME: 2018/12/5 fanhl
+        Log.d(TAG, "moveSpinner: overscrollTop:$overscrollTop")
     }
 
     private fun finishSpinner(overscrollTop: Float) {
         // FIXME: 2018/12/5 fanhl
+        Log.d(TAG, "finishSpinner: overscrollTop:$overscrollTop")
     }
 
     private fun ensureTarget() {
@@ -330,6 +332,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     }
 
     companion object {
+        private val TAG = DrawstringRefreshLayout::class.java.simpleName
         private val LOG_TAG = DrawstringRefreshLayout::class.java.simpleName
 
         /**

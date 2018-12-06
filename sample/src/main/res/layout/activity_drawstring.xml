@@ -14,6 +14,7 @@
         android:layout_height="match_parent"
         android:clipToPadding="false"
         android:orientation="vertical"
+        android:padding="@dimen/unit_half"
         app:layoutManager="@string/linear_layout_manager"
         tools:listitem="@layout/item_view"/>
 </com.fanhl.linrefreshlayout.DrawstringRefreshLayout>

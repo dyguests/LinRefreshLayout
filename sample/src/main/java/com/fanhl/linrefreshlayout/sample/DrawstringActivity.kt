@@ -5,12 +5,14 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.fanhl.linrefreshlayout.DrawstringRefreshLayout
+import io.reactivex.BackpressureStrategy
+import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_drawstring.*
-import kotlinx.coroutines.delay
-import org.jetbrains.anko.doAsync
-import org.jetbrains.anko.toast
 
 class DrawstringActivity : AppCompatActivity() {
 
@@ -30,9 +32,15 @@ class DrawstringActivity : AppCompatActivity() {
     private fun assignViews() {
         refresh_layout.setOnRefreshListener(object : DrawstringRefreshLayout.OnRefreshListener {
             override fun onRefresh() {
-                toast("onRefresh")
+                viewModel.refreshData()
             }
         })
+
+        viewModel.apply {
+            data.observe(this@DrawstringActivity, Observer {
+                adapter.setNewData(it)
+            })
+        }
     }
 
     private fun initData() {
@@ -40,18 +48,23 @@ class DrawstringActivity : AppCompatActivity() {
     }
 
     private fun refreshData() {
-        viewModel.refreshData()
+//        viewModel.refreshData()
     }
 
     class ViewModel(application: Application) : AndroidViewModel(application) {
         val data by lazy { MutableLiveData<List<Int>>() }
 
         fun refreshData() {
-//            doAsync {
-//                delay(2000)
-//            }
-
-//            delay(2000)
+            val subscribe = Flowable
+                .create<List<Int>>({
+                    Thread.sleep(2000)
+                    it.onNext(List(20) { it })
+                }, BackpressureStrategy.LATEST)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    data.value = it
+                }
         }
     }
 }

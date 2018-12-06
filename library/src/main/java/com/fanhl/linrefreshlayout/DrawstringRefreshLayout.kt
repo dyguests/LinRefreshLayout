@@ -34,6 +34,7 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
     private var mNestedScrollInProgress: Boolean = false
 
+    private val mMediumAnimationDuration: Int
     internal var mCurrentTargetOffsetTop: Int = 0
 
     private var mInitialMotionY: Float = 0.toFloat()
@@ -66,6 +67,8 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
             setStyle(CircularProgressDrawable.DEFAULT)
         }
     }
+
+    private var mScaleAnimation: Animation? = null
 
     private var mScaleDownAnimation: Animation? = null
 
@@ -129,6 +132,9 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     }
 
     init {
+
+        mMediumAnimationDuration = resources.getInteger(android.R.integer.config_mediumAnimTime)
+
         setWillNotDraw(false)
         mDecelerateInterpolator = DecelerateInterpolator(DECELERATE_INTERPOLATION_FACTOR)
 
@@ -367,6 +373,46 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 //        mCircleView.background.alpha = targetAlpha
 
         mProgress.alpha = targetAlpha
+    }
+
+    /**
+     * Notify the widget that refresh state has changed. Do not call this when
+     * refresh is triggered by a swipe gesture.
+     *
+     * @param refreshing Whether or not the view should show refresh progress.
+     */
+    fun setRefreshing(refreshing: Boolean) {
+        if (refreshing && mRefreshing != refreshing) {
+            // scale and show
+            mRefreshing = refreshing
+            var endTarget = 0
+            if (!mUsingCustomStart) {
+                endTarget = mSpinnerOffsetEnd + mOriginalOffsetTop
+            } else {
+                endTarget = mSpinnerOffsetEnd
+            }
+            setTargetOffsetTopAndBottom(endTarget - mCurrentTargetOffsetTop)
+            mNotify = false
+            startScaleUpAnimation(mRefreshListener)
+        } else {
+            setRefreshing(refreshing, false /* notify */)
+        }
+    }
+
+    private fun startScaleUpAnimation(listener: Animation.AnimationListener?) {
+        mCircleView.visibility = View.VISIBLE
+        mProgress.alpha = MAX_ALPHA
+        mScaleAnimation = object : Animation() {
+            public override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+                setAnimationProgress(interpolatedTime)
+            }
+        }
+        mScaleAnimation!!.setDuration(mMediumAnimationDuration.toLong())
+        if (listener != null) {
+            mCircleView.setAnimationListener(listener)
+        }
+        mCircleView.clearAnimation()
+        mCircleView.startAnimation(mScaleAnimation)
     }
 
     /**

@@ -40,7 +40,8 @@ class DrawstringActivity : AppCompatActivity() {
 
         viewModel.apply {
             data.observe(this@DrawstringActivity, Observer {
-//                skeletonScreen?.hide()
+                //                skeletonScreen?.hide()
+                refresh_layout.setRefreshing(false)
                 adapter.setNewData(it)
             })
         }

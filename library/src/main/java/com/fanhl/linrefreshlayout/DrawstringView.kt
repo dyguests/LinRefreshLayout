@@ -31,6 +31,20 @@ class DrawstringView(
         canvas.drawCircle(width / 2f, scrollOffset, 10f, paint)
     }
 
+    override fun onAnimationStart() {
+        super.onAnimationStart()
+        if (mListener != null) {
+            mListener!!.onAnimationStart(animation)
+        }
+    }
+
+    public override fun onAnimationEnd() {
+        super.onAnimationEnd()
+        if (mListener != null) {
+            mListener!!.onAnimationEnd(animation)
+        }
+    }
+
     /**
      * 这里设置下拉的偏移值
      */

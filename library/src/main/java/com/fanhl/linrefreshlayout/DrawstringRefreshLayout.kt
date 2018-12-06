@@ -79,11 +79,15 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     private var mChildScrollUpCallback: OnChildScrollUpCallback? = null
 
     private val mRefreshListener = object : Animation.AnimationListener {
-        override fun onAnimationStart(animation: Animation) {}
+        override fun onAnimationStart(animation: Animation?) {
+            Log.e(TAG, "onAnimationStart: ")
+        }
 
-        override fun onAnimationRepeat(animation: Animation) {}
+        override fun onAnimationRepeat(animation: Animation?) {
+            Log.d(TAG, "onAnimationRepeat: ")
+        }
 
-        override fun onAnimationEnd(animation: Animation) {
+        override fun onAnimationEnd(animation: Animation?) {
             if (mRefreshing) {
                 // Make sure the progress view is fully visible
                 mProgress.alpha = MAX_ALPHA
@@ -545,6 +549,16 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
             val newPointerIndex = if (pointerIndex == 0) 1 else 0
             mActivePointerId = ev.getPointerId(newPointerIndex)
         }
+    }
+
+    /**
+     * Set the listener to be notified when a refresh is triggered via the swipe
+     * gesture.
+     *
+     * 之后直接改成 kotlin写法
+     */
+    fun setOnRefreshListener(listener: OnRefreshListener?) {
+        mListener = listener
     }
 
     companion object {

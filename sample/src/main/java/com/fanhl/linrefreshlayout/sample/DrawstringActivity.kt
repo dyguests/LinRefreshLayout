@@ -56,7 +56,7 @@ class DrawstringActivity : AppCompatActivity() {
     }
 
     private fun refreshData() {
-//        viewModel.refreshData()
+        viewModel.refreshData()
     }
 
     class ViewModel(application: Application) : AndroidViewModel(application) {

@@ -12,7 +12,7 @@ class DefaultAdapter : BaseQuickAdapter<Int, BaseViewHolder>(R.layout.item_view)
         helper?.itemView?.apply {
             img_cover.imageResource = R.mipmap.ic_launcher
             tv_title.text = "Title$item"
-            tv_content.text = "Content${item}Content${item}Content${item}Content${item}Content${item}"
+            tv_content.text = "Content$item ${System.currentTimeMillis()}"
         }
     }
 }

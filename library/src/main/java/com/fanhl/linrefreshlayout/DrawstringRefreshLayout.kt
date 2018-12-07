@@ -9,10 +9,13 @@ import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.Transformation
+import android.widget.AbsListView
 import android.widget.ListView
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
+import androidx.core.view.NestedScrollingChildHelper
 import androidx.core.view.NestedScrollingParent
+import androidx.core.view.NestedScrollingParentHelper
 import androidx.core.view.ViewCompat
 import androidx.core.widget.ListViewCompat
 import androidx.swiperefreshlayout.widget.CircularProgressDrawable
@@ -32,6 +35,12 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
     private val mTouchSlop: Int = 0
     private var mTotalDragDistance = -1f
 
+    // If nested scrolling is enabled, the total amount that needed to be
+    // consumed by this as the nested scrolling parent is used in place of the
+    // overscroll determined by MOVE events in the onTouch handler
+    private var mTotalUnconsumed: Float = 0.toFloat()
+    private val mNestedScrollingParentHelper: NestedScrollingParentHelper
+    private val mNestedScrollingChildHelper: NestedScrollingChildHelper
     private var mNestedScrollInProgress: Boolean = false
 
     private val mMediumAnimationDuration: Int
@@ -140,15 +149,29 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
 
         val metrics = resources.displayMetrics
 
+        createProgressView()
         isChildrenDrawingOrderEnabled = true
-
-        ensureTarget()
-
-        addView(mCircleView)
-
         // the absolute offset has to take into account that the circle starts at an offset
         mSpinnerOffsetEnd = (DEFAULT_CIRCLE_TARGET * metrics.density).toInt()
         mTotalDragDistance = mSpinnerOffsetEnd.toFloat()
+        mNestedScrollingParentHelper = NestedScrollingParentHelper(this)
+
+        mNestedScrollingChildHelper = NestedScrollingChildHelper(this)
+        isNestedScrollingEnabled = true
+
+
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        if (!enabled) {
+            reset()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        reset()
     }
 
     override fun getChildDrawingOrder(childCount: Int, i: Int): Int {
@@ -351,6 +374,38 @@ class DrawstringRefreshLayout @JvmOverloads constructor(
         }
 
         return true
+    }
+
+    override fun requestDisallowInterceptTouchEvent(b: Boolean) {
+        // if this is a List < L or another view that doesn't support nested
+        // scrolling, ignore this request so that the vertical scroll event
+        // isn't stolen
+        if (android.os.Build.VERSION.SDK_INT < 21 && mTarget is AbsListView || mTarget != null && !ViewCompat.isNestedScrollingEnabled(mTarget!!)) {
+            // Nope.
+        } else {
+            super.requestDisallowInterceptTouchEvent(b)
+        }
+    }
+
+    // NestedScrollingParent
+
+
+    override fun onStartNestedScroll(child: View, target: View, nestedScrollAxes: Int): Boolean {
+        return (isEnabled && !mReturningToStart && !mRefreshing && nestedScrollAxes and ViewCompat.SCROLL_AXIS_VERTICAL != 0)
+    }
+
+
+    override fun onNestedScrollAccepted(child: View, target: View, axes: Int) {
+        // Reset the counter of how much leftover scroll needs to be consumed.
+        mNestedScrollingParentHelper.onNestedScrollAccepted(child, target, axes)
+        // Dispatch up to the nested parent
+        startNestedScroll(axes and ViewCompat.SCROLL_AXIS_VERTICAL)
+        mTotalUnconsumed = 0f
+        mNestedScrollInProgress = true
+    }
+
+    private fun createProgressView() {
+        addView(mCircleView)
     }
 
     internal fun reset() {

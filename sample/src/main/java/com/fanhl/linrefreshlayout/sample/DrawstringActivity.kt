@@ -7,6 +7,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.ethanhua.skeleton.RecyclerViewSkeletonScreen
+import com.ethanhua.skeleton.Skeleton
 import com.fanhl.linrefreshlayout.DrawstringRefreshLayout
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
@@ -18,7 +20,7 @@ class DrawstringActivity : AppCompatActivity() {
 
     private val adapter = DefaultAdapter()
 
-//    private var skeletonScreen: RecyclerViewSkeletonScreen? = null
+    private var skeletonScreen: RecyclerViewSkeletonScreen? = null
 
     private val viewModel by lazy { ViewModelProvider.AndroidViewModelFactory.getInstance(application).create(ViewModel::class.java) }
 
@@ -40,7 +42,7 @@ class DrawstringActivity : AppCompatActivity() {
 
         viewModel.apply {
             data.observe(this@DrawstringActivity, Observer {
-                //                skeletonScreen?.hide()
+                skeletonScreen?.hide()
                 refresh_layout.setRefreshing(false)
                 adapter.setNewData(it)
             })
@@ -49,10 +51,10 @@ class DrawstringActivity : AppCompatActivity() {
 
     private fun initData() {
         recycler_view.adapter = adapter
-//        skeletonScreen = Skeleton.bind(recycler_view)
-//            .adapter(adapter)
-//            .load(R.layout.item_view)
-//            .show()
+        skeletonScreen = Skeleton.bind(recycler_view)
+            .adapter(adapter)
+            .load(R.layout.item_view)
+            .show()
     }
 
     private fun refreshData() {
